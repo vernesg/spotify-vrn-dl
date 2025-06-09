@@ -3,72 +3,212 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Spotify Downloader</title>
+  <title>Spotify MP3 Downloader</title>
   <style>
-    /* (Use your preferred design – previous styles can apply here) */
-    body { background:#122; color:#eee; font-family:sans-serif; padding:40px; }
-    input, button { padding:10px; font-size:16px; margin:5px 0; width:100%; max-width:500px; }
-    .result { margin-top:20px; }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 25px #00ffe5;
+      text-align: center;
+      width: 90%;
+      max-width: 500px;
+      animation: fadeIn 1s ease-out;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 28px;
+      color: #00ffe5;
+    }
+
+    input {
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      outline: none;
+      box-shadow: 0 0 15px #00ffe5a0;
+      background-color: #111;
+      color: #00ffe5;
+    }
+
+    button {
+      padding: 12px 30px;
+      background-color: #00ffe5;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      color: #000;
+      transition: 0.3s;
+      box-shadow: 0 0 15px #00ffe5;
+    }
+
+    button:hover {
+      background-color: #0ff;
+      transform: scale(1.05);
+    }
+
+    .result {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+
+    a.download-link {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #00ffe5;
+      color: #000;
+      text-decoration: none;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ffe5;
+      transition: 0.3s;
+    }
+
+    a.download-link:hover {
+      background: #0ff;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    canvas#confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Spotify MP3 Downloader</h1>
-  <input id="spotifyUrl" type="text" placeholder="Paste Spotify track URL here…" />
-  <button onclick="download()">Download</button>
-  <div class="result" id="result"></div>
+  <canvas id="confetti"></canvas>
+  <div class="container">
+    <h1>🎧 Spotify MP3 Downloader</h1>
+    <input type="text" id="spotifyUrl" placeholder="Paste Spotify track URL..." />
+    <button onclick="download()">Download</button>
+    <div class="result" id="result"></div>
+    <audio id="audioPreview" controls style="margin-top: 15px; display: none; width: 100%;"></audio>
+  </div>
 
   <script>
     async function download() {
       const input = document.getElementById("spotifyUrl");
-      const resultDiv = document.getElementById("result");
+      const result = document.getElementById("result");
+      const preview = document.getElementById("audioPreview");
       const url = input.value.trim();
 
       if (!url) {
-        resultDiv.textContent = "⚠️ Please enter a Spotify URL.";
+        result.innerHTML = "⚠️ Please enter a Spotify track URL.";
         return;
       }
 
-      const apiUrl = `https://rapido.zetsu.xyz/api/sp-dl?url=${encodeURIComponent(url)}`;
-      resultDiv.textContent = "🔄 Contacting API…";
+      const apiURL = `https://rapido.zetsu.xyz/api/sp-dl?url=${encodeURIComponent(url)}`;
+      result.innerHTML = "🔄 Fetching download link...";
+      preview.style.display = "none";
 
       try {
-        const res = await fetch(apiUrl);
-
-        // Check HTTP status
-        if (!res.ok) {
-          resultDiv.textContent = `❌ HTTP Error: ${res.status} ${res.statusText}`;
-          return;
-        }
-
+        const res = await fetch(apiURL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        // Check top-level structure
-        if (data.status !== true) {
-          const errMsg = data.error || data.message || JSON.stringify(data);
-          resultDiv.textContent = `❌ API returned status=false: ${errMsg}`;
-          return;
-        }
+        if (data.status && data.result?.download_url) {
+          const song = data.result;
+          result.innerHTML = `
+            ✅ <strong>${song.title}</strong><br>
+            👤 Artist: ${song.artists}<br>
+            <a class="download-link" href="${song.download_url}" target="_blank">⬇️ Download MP3</a>
+          `;
 
-        const song = data.result;
-        if (!song || !song.download_url) {
-          resultDiv.textContent = "❌ No download URL found in response.";
-          console.error("Response data:", data);
-          return;
-        }
+          // Play preview
+          preview.src = song.download_url;
+          preview.style.display = "block";
+          launchConfetti();
 
-        // Display results
-        resultDiv.innerHTML = `
-          ✅ <strong>${song.title || 'Untitled'}</strong><br>
-          Artist: ${song.artists || 'Unknown'}<br>
-          <a href="${song.download_url}" download target="_blank">🎵 Click to Download</a>
-        `;
+        } else {
+          result.innerHTML = "❌ Failed to get download URL.";
+        }
       } catch (err) {
+        result.innerHTML = `🚫 Error: ${err.message}`;
         console.error(err);
-        const msg = err.name === 'TypeError' && err.message.includes('CORS')
-          ? 'Possible CORS issue—request blocked by server.'
-          : err.message;
-        resultDiv.textContent = `🚫 Fetch Error: ${msg}`;
       }
+    }
+
+    // Confetti 🎉 effect
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const pieces = Array.from({ length: 100 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 20 + 10,
+        d: Math.random() * 50,
+        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+        tilt: Math.floor(Math.random() * 10) - 10,
+        tiltAngle: 0,
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let p of pieces) {
+          ctx.beginPath();
+          ctx.lineWidth = p.r / 2;
+          ctx.strokeStyle = p.color;
+          ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+          ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+          ctx.stroke();
+        }
+        update();
+      }
+
+      function update() {
+        for (let p of pieces) {
+          p.tiltAngle += 0.1;
+          p.y += Math.cos(p.d) + 1 + p.r / 2;
+          p.x += Math.sin(p.d);
+          p.tilt = Math.sin(p.tiltAngle) * 15;
+
+          if (p.y > canvas.height) {
+            p.y = -10;
+            p.x = Math.random() * canvas.width;
+          }
+        }
+      }
+
+      function loop() {
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      loop();
+      setTimeout(() => canvas.remove(), 4000);
     }
   </script>
 </body>
