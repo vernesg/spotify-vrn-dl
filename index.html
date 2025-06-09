@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spotify Downloader</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f0f0f, #1a1a2e);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .container {
+      background: rgba(20, 20, 30, 0.9);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 40px #00ffcc88;
+      text-align: center;
+      animation: fadeIn 1.5s ease-in-out;
+      width: 90%;
+      max-width: 500px;
+    }
+
+    h1 {
+      color: #00ffc3;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #00ffc3;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      outline: none;
+      background: #222;
+      color: #00ffc3;
+      box-shadow: inset 0 0 10px #00ffc377;
+    }
+
+    button {
+      padding: 12px 25px;
+      background: #00ffc3;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 20px #00ffc3aa;
+    }
+
+    button:hover {
+      background: #0ff;
+      transform: scale(1.05);
+    }
+
+    .result {
+      margin-top: 20px;
+      color: #fff;
+      animation: fadeIn 1s ease-in-out;
+      word-wrap: break-word;
+    }
+
+    .glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, #00ffc3 0%, transparent 70%);
+      top: -100px;
+      left: -100px;
+      animation: moveGlow 10s infinite alternate;
+      opacity: 0.2;
+      z-index: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes moveGlow {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(300px, 300px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="container">
+    <h1>🎵 Spotify Downloader</h1>
+    <input type="text" id="spotifyUrl" placeholder="Paste Spotify track URL here...">
+    <button onclick="download()">Download</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    async function download() {
+      const url = document.getElementById("spotifyUrl").value;
+      const resultDiv = document.getElementById("result");
+
+      if (!url.trim()) {
+        resultDiv.innerHTML = "⚠️ Please enter a valid Spotify URL.";
+        return;
+      }
+
+      resultDiv.innerHTML = "⏳ Fetching data...";
+      try {
+        const res = await fetch(`https://ace-rest-api.onrender.com/api/spotifydl?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (data && data.title && data.download_url) {
+          resultDiv.innerHTML = `
+            <p>✅ <strong>${data.title}</strong></p>
+            <p>Artist: ${data.artist || 'Unknown'}</p>
+            <a href="${data.download_url}" target="_blank" style="color: #0ff; text-decoration: underline;">🔗 Download Link</a>
+          `;
+        } else {
+          resultDiv.innerHTML = "❌ No valid response from server.";
+        }
+      } catch (e) {
+        console.error(e);
+        resultDiv.innerHTML = "🚫 Error fetching the track. Please try again.";
+      }
+    }
+  </script>
+</body>
+</html>
