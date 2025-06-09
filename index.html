@@ -3,158 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎵 Spotify Downloader</title>
+  <title>Spotify Downloader</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Poppins', sans-serif;
-    }
-
-    body {
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-
-    .container {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(12px);
-      border: 2px solid rgba(0, 255, 170, 0.4);
-      border-radius: 20px;
-      padding: 40px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 0 25px #00ffc355;
-      text-align: center;
-      animation: fadeIn 1.2s ease-in-out;
-    }
-
-    h1 {
-      color: #00ffc3;
-      font-size: 28px;
-      margin-bottom: 20px;
-      text-shadow: 0 0 10px #00ffc3;
-    }
-
-    input {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: none;
-      margin-bottom: 20px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.1);
-      color: #00ffc3;
-      box-shadow: inset 0 0 10px #00ffc377;
-    }
-
-    button {
-      padding: 12px 28px;
-      background: #00ffc3;
-      color: #000;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 0 15px #00ffc3cc;
-      transition: 0.3s ease;
-    }
-
-    button:hover {
-      background: #0ff;
-      transform: scale(1.05);
-    }
-
-    .result {
-      margin-top: 20px;
-      color: #fff;
-      animation: fadeIn 1s ease-in-out;
-    }
-
-    .result a {
-      color: #0ff;
-      text-decoration: underline;
-      display: block;
-      margin-top: 10px;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .glow-bg {
-      position: absolute;
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, #00ffc3 0%, transparent 80%);
-      top: -100px;
-      right: -100px;
-      z-index: 0;
-      opacity: 0.3;
-      animation: moveGlow 8s ease-in-out infinite alternate;
-    }
-
-    @keyframes moveGlow {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(-150px, 150px); }
-    }
+    /* (Use your preferred design – previous styles can apply here) */
+    body { background:#122; color:#eee; font-family:sans-serif; padding:40px; }
+    input, button { padding:10px; font-size:16px; margin:5px 0; width:100%; max-width:500px; }
+    .result { margin-top:20px; }
   </style>
 </head>
 <body>
-  <div class="glow-bg"></div>
-  <div class="container">
-    <h1>🎧 Spotify MP3 Downloader</h1>
-    <input id="spotifyUrl" type="text" placeholder="Paste Spotify track URL here..." />
-    <button onclick="download()">Download</button>
-    <div class="result" id="result"></div>
-  </div>
+  <h1>Spotify MP3 Downloader</h1>
+  <input id="spotifyUrl" type="text" placeholder="Paste Spotify track URL here…" />
+  <button onclick="download()">Download</button>
+  <div class="result" id="result"></div>
 
   <script>
     async function download() {
-      const url = document.getElementById("spotifyUrl").value.trim();
+      const input = document.getElementById("spotifyUrl");
       const resultDiv = document.getElementById("result");
+      const url = input.value.trim();
 
       if (!url) {
-        resultDiv.innerHTML = "⚠️ Please enter a Spotify track URL.";
+        resultDiv.textContent = "⚠️ Please enter a Spotify URL.";
         return;
       }
 
-      resultDiv.innerHTML = "🔄 Fetching download link...";
+      const apiUrl = `https://rapido.zetsu.xyz/api/sp-dl?url=${encodeURIComponent(url)}`;
+      resultDiv.textContent = "🔄 Contacting API…";
 
       try {
-        const encodedUrl = encodeURIComponent(url);
-        const apiUrl = `https://rapido.zetsu.xyz/api/sp-dl?url=${encodedUrl}`;
-        const response = await fetch(apiUrl);
-        const data = await response.json();
+        const res = await fetch(apiUrl);
 
-        if (data.status === true && data.result?.download_url) {
-          resultDiv.innerHTML = `
-            ✅ <strong>${data.result.title}</strong><br>
-            Artist: ${data.result.artists}<br>
-            <a href="${data.result.download_url}" target="_blank">🎵 Click here to download</a>
-          `;
-        } else {
-          resultDiv.innerHTML = "❌ Failed to retrieve download link.";
+        // Check HTTP status
+        if (!res.ok) {
+          resultDiv.textContent = `❌ HTTP Error: ${res.status} ${res.statusText}`;
+          return;
         }
+
+        const data = await res.json();
+
+        // Check top-level structure
+        if (data.status !== true) {
+          const errMsg = data.error || data.message || JSON.stringify(data);
+          resultDiv.textContent = `❌ API returned status=false: ${errMsg}`;
+          return;
+        }
+
+        const song = data.result;
+        if (!song || !song.download_url) {
+          resultDiv.textContent = "❌ No download URL found in response.";
+          console.error("Response data:", data);
+          return;
+        }
+
+        // Display results
+        resultDiv.innerHTML = `
+          ✅ <strong>${song.title || 'Untitled'}</strong><br>
+          Artist: ${song.artists || 'Unknown'}<br>
+          <a href="${song.download_url}" download target="_blank">🎵 Click to Download</a>
+        `;
       } catch (err) {
         console.error(err);
-        resultDiv.innerHTML = "🚫 An error occurred while fetching the song.";
+        const msg = err.name === 'TypeError' && err.message.includes('CORS')
+          ? 'Possible CORS issue—request blocked by server.'
+          : err.message;
+        resultDiv.textContent = `🚫 Fetch Error: ${msg}`;
       }
     }
   </script>
